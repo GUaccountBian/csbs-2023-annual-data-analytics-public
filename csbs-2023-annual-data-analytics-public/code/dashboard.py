@@ -33,24 +33,16 @@ input_size = 60
 num_classes = 20
 model = NeuralNetworkMultiClassification(input_size, num_classes)
 
-# Load the Pickle model
-def load_pickle_model(model_path):
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
-    return model
-
 
 # Function to get prediction results
-def get_prediction(data, pickle_model, torch_model):
-    # Use the Pickle model
-    pickle_result = pickle_model.predict(data)
+def get_prediction(data, torch_model):
 
     # Use the PyTorch model
     tensor_data = torch.tensor(data, dtype=torch.float32)
-    torch_result = torch_model(tensor_data).detach().numpy()
+    torch_result = torch_model(tensor_data).detach()
 
     # Combine the results
-    combined_result = {"pickle_result": pickle_result, "torch_result": torch_result}
+    combined_result = {"torch_result": torch.argmax(torch_result) + 1}
 
     return combined_result
 
@@ -58,10 +50,7 @@ def get_prediction(data, pickle_model, torch_model):
 st.title("Simple Web App for ML Model Predictions")
 
 # Load the models
-pickle_model_path = "finalized_model_ML.sav"
 torch_model_path = "my_classification_model2.pth"
-
-pickle_model = load_pickle_model(pickle_model_path)
 model.load_state_dict(torch.load(torch_model_path))
 model.eval()
 
@@ -87,7 +76,7 @@ for i, row_name in enumerate(row_names):
             value = st.number_input(
                 column_names[j], value=0.0, key=f"R{i+1}C{j+1}", step=None, format="%f"
             )
-            if value != 0.0:
+            if isinstance(value, (int, float)):
                 input_received = True
             input_data[j][i] = value
 
@@ -95,9 +84,9 @@ for i, row_name in enumerate(row_names):
 if st.button("Get Predictions"):
     if input_received:
         try:
-            prediction_result = get_prediction(input_data.reshape((60, 1)), pickle_model, model)
-            st.write("Pickle Model Result:", prediction_result["pickle_result"])
-            st.write("Torch Model Result:", prediction_result["torch_result"])
+            prediction_result = get_prediction(input_data.reshape((1, 60)), model)
+            st.markdown(f'<h2 style="font-size: 24px;">Neural Network Model Result:</h2>', unsafe_allow_html=True)
+            st.write(f"This Community bank can survive {prediction_result['torch_result'].item()} quarters")
         except Exception as e:
             st.write("Error:", str(e))
     else:
